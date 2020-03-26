@@ -1,24 +1,15 @@
 from rest_framework import serializers
 
 from regions.models import Town, Region
-from utils.serializers import RecursiveField, update_nested
+from utils.serializers import RecursiveField
 
 
 class TownListSerializer(serializers.ModelSerializer):
-    region = serializers.IntegerField(source='region_id')
+    id = serializers.IntegerField()
 
     class Meta:
         model = Town
         fields = ('id', 'name', 'region')
-
-    def validate(self, attrs):
-        return super().validate(attrs)
-
-    def update(self, instance, validated_data):
-        region = validated_data['region']
-        if isinstance(region, Region):
-            validated_data['region'] = region.pk
-        return super().update(instance, validated_data)
 
 
 class RegionListSerializer(serializers.ModelSerializer):
@@ -29,18 +20,44 @@ class RegionListSerializer(serializers.ModelSerializer):
         model = Region
         fields = ('id', 'name', 'parent', 'children', 'towns')
 
+
+class RegionUpdateSerializer(serializers.ModelSerializer):
+    children = RecursiveField(many=True, required=False)
+    towns = TownListSerializer(many=True, required=False)
+
+    class Meta:
+        model = Region
+        fields = ('id', 'name', 'parent', 'children', 'towns')
+
     def update(self, instance: Region, validated_data):
-        towns = update_nested(TownListSerializer, validated_data.pop('towns', []))
-        # regions = update_nested(RegionListSerializer, validated_data.pop('children', []))
-        # regions = validated_data.pop('children', [])
-        # serializer = TownListSerializer(many=True, data=towns, partial=True)
-        # serializer.is_valid(raise_exception=True)
-        # serializer.save()
-        # TownListSerializer().update()
-        instance.towns.set(towns)
-        # instance.children.set(regions)
+        return self.update_regions(validated_data, region=instance)
 
-        return super().update(instance, validated_data)
+    def update_regions(self, data, region=None):
+        # Обновление городов региона
+        self.update_towns(data.pop('towns', []))
+        # Обноление региона
+        region = self.update_region(data, region)
+        # Обновление дочерних регионов (рекурсией)
+        children = data.pop('children', [])
+        for region_data in children:
+            self.update_regions(region_data)
+        return region
 
+    def update_region(self, data, region):
+        if not region:
+            region = Region.objects.get(pk=data['id'])
+        region.name = data['name']
+        parent = data.get('parent')
+        if parent and isinstance(parent, int):
+            parent = Region.objects.get(pk=parent)
+        region.parent = parent
+        region.save()
+        return region
 
-
+    def update_towns(self, towns_list):
+        towns = []
+        for town_data in towns_list:
+            if isinstance(town_data['region'], int):
+                town_data['region'] = Region.objects.get(pk=town_data['region'])
+            towns.append(Town(**town_data))
+        Town.objects.bulk_update(towns, ['name', 'region'])

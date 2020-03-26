@@ -4,7 +4,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from regions.models import Region, Town
-from regions.serializers import TownListSerializer, RegionListSerializer
+from regions.serializers import TownListSerializer, RegionListSerializer, RegionUpdateSerializer
+from utils.views import CustomUpdateAPIView
 
 
 class RegionMixin:
@@ -23,11 +24,11 @@ class RegionCreateListView(RegionMixin, ListCreateAPIView):
         return Response(serializer.data)
 
 
-class RegionUpdateDeleteView(RegionMixin, UpdateAPIView, DestroyAPIView):
+class RegionUpdateDeleteView(RegionMixin, CustomUpdateAPIView, DestroyAPIView):
     """
     Управления справочником регионов: изменение/удаление
     """
-    pass
+    update_serializer = RegionUpdateSerializer
 
 
 class TownMixin:
