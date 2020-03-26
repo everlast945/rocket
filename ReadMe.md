@@ -12,7 +12,7 @@ SECRET_KEY='ASDasdas_asd_dasd$@#%@#%'
 - Установить пакеты из `requirements.txt`
 - Выполнить `python manage.py migrate`
 - Можно заполнить БД тестовыми данными выполнив `python manage.py init_empty_base`
-- Авторизоваться тут: `api-auth/login/`
+- Авторизоваться тут: `api-auth/login/`. Тестовый пользователь test/test (username/pass)
 
 
 Урлы:
